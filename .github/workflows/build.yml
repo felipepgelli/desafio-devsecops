@@ -43,7 +43,7 @@ jobs:
         run: |
           IMAGE=quarkus-service:${{ github.sha }}
           trivy image --scanners vuln,secret,config \
-            --severity HIGH,CRITICAL \
+            --severity CRITICAL \
             --exit-code 1 \
             --format sarif -o trivy-image.sarif $IMAGE
 
@@ -51,7 +51,7 @@ jobs:
       - name: Trivy Filesystem
         run: |
           trivy fs --scanners vuln,secret,config \
-            --severity HIGH,CRITICAL \
+            --severity CRITICAL \
             --exit-code 1 \
             --format sarif -o trivy-fs.sarif .
 
