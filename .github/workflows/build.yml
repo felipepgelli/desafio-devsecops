@@ -30,6 +30,21 @@ jobs:
         shell: cmd
         run: .\mvnw.cmd -B -DskipTests package
 
+       # ---- SonarQube (Maven) -----------------------------------------------------
+      - name: "SonarQube: análise com Maven"
+        shell: cmd
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
+        run: >
+          .\mvnw.cmd -B verify sonar:sonar
+          -Dsonar.host.url=%SONAR_HOST_URL%
+          -Dsonar.token=%SONAR_TOKEN%
+          -DskipTests
+          -Dsonar.qualitygate.wait=true
+          -Dsonar.projectKey=quarkus-service
+
+          
       # ---- Docker build (Windows/cmd) --------------------------------------
       - name: Build da imagem Docker
         shell: cmd
