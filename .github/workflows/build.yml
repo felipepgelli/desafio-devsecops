@@ -1,4 +1,4 @@
-name: Build Quarkus (Self-Hosted) + Trivy + Deploy K8s
+name: CI/CD Local - Build + Trivy + Deploy (DES/PRD)
 
 on:
   push:
@@ -10,66 +10,60 @@ permissions:
   security-events: write
 
 jobs:
-  build:
-    name: build
-    runs-on: self-hosted   # Windows na sua máquina
+  ci_cd:
+    runs-on: self-hosted
     env:
+      # ajuste se seu módulo estiver em outro lugar
       WORKDIR: quarkus-service/app/quarkus-quickstarts/getting-started
-      IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/quarkus-getting-started
-      IMAGE_TAG_DES: des
+
+      # imagem local (sem Docker Hub)
+      IMAGE_NAME: quarkus-getting-started
+      TAG_DES: des
+
+      # K8s: nomes alinhados aos seus manifests
+      NS_DES: des
+      NS_PRD: prd
+      DEPLOY_DES: getting-started
+      DEPLOY_PRD: getting-started
+      CONTAINER: app
+
+      # arquivos de evidência
       SARIF_IMAGE: trivy-image.sarif
       SARIF_FS: trivy-fs.sarif
+
     steps:
-      - name: Checkout código
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar JDK 17 (Temurin)
+      - name: Setup Java 17 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
 
-      # Build do módulo (gera fast-jar; sem testes p/ acelerar nesse workflow)
-      - name: Build com Maven (sem testes)
+      # ---------- Build do app (gera fast-jar) ----------
+      - name: Maven build (sem testes)
         shell: cmd
         working-directory: ${{ env.WORKDIR }}
         run: .\mvnw.cmd -B -DskipTests -D"quarkus.package.type=fast-jar" clean package
 
-      # Build da imagem Docker (Dockerfile.jvm com Eclipse Temurin 17)
-      - name: Build da imagem Docker (Temurin 17)
+      # ---------- Build da imagem Docker local ----------
+      - name: Docker build (Dockerfile.jvm)
         shell: pwsh
         working-directory: ${{ env.WORKDIR }}
         run: |
-          docker build -f src/main/docker/Dockerfile.jvm -t $env:IMAGE_NAME:$env:IMAGE_TAG_DES .
+          docker build -f src/main/docker/Dockerfile.jvm -t $env:IMAGE_NAME:$env:TAG_DES .
 
-      # (opcional) verificar imagem local
-      - name: Verificar imagem local
-        shell: pwsh
-        run: docker images $env:IMAGE_NAME --format "{{.Repository}}:{{.Tag}} -> {{.ID}}"
-
-      # Instalar Trivy no Windows
+      # ---------- Instalar Trivy ----------
       - name: Instalar Trivy (Windows)
         shell: pwsh
         run: |
           choco install -y trivy
           trivy --version
 
-      # Trivy Image (gate: CRITICAL apenas como evidência; ajuste severidade se quiser)
-      - name: "Trivy Image (gate: CRITICAL)"
-        shell: pwsh
-        run: |
-          trivy image --security-checks vuln \
-            --severity HIGH,CRITICAL --ignore-unfixed `
-            --format table --output trivy-image.txt `
-            $env:IMAGE_NAME:$env:IMAGE_TAG_DES
-          trivy image --security-checks vuln `
-            --severity HIGH,CRITICAL --ignore-unfixed `
-            --format sarif --output $env:SARIF_IMAGE `
-            $env:IMAGE_NAME:$env:IMAGE_TAG_DES
-
-      # Trivy Filesystem (no código-fonte do módulo)
-      - name: "Trivy Filesystem (gate: CRITICAL)"
+      # ---------- Trivy FS (código-fonte) ----------
+      - name: Trivy FS (vuln + secret)
         shell: pwsh
         run: |
           trivy fs --security-checks vuln,secret `
@@ -81,82 +75,52 @@ jobs:
             --format sarif --output $env:SARIF_FS `
             $env:WORKDIR
 
-      # Upload SARIF (Code Scanning) - opcional
-      - name: Upload SARIF (image)
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: ${{ env.SARIF_IMAGE }}
-      - name: Upload SARIF (fs)
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: ${{ env.SARIF_FS }}
+      # ---------- Trivy Image ----------
+      - name: Trivy Image (vuln)
+        shell: pwsh
+        run: |
+          trivy image --security-checks vuln `
+            --severity HIGH,CRITICAL --ignore-unfixed `
+            --format table --output trivy-image.txt `
+            $env:IMAGE_NAME:$env:TAG_DES
+          trivy image --security-checks vuln `
+            --severity HIGH,CRITICAL --ignore-unfixed `
+            --format sarif --output $env:SARIF_IMAGE `
+            $env:IMAGE_NAME:$env:TAG_DES
 
-      # Artefatos de evidência
-      - name: Upload artifacts
+      - name: Upload artifacts (Trivy)
         uses: actions/upload-artifact@v4
         with:
           name: trivy-results
           path: |
-            trivy-image.txt
             trivy-fs.txt
+            trivy-image.txt
+            ${{ env.SARIF_FS }}
+            ${{ env.SARIF_IMAGE }}
 
-  deploy_k8s:
-    name: Deploy to Kubernetes (DES + PRD) - Local (Minikube)
-    runs-on: self-hosted
-    needs: build
-    env:
-      WORKDIR: quarkus-service/app/quarkus-quickstarts/getting-started
-      IMAGE_NAME: quarkus-getting-started
-      TAG_DES: des
-      CONTAINER: app
-      NS_DES: des
-      DEPLOY_DES: quarkus-des
-      NS_PRD: prd
-      DEPLOY_PRD: quarkus-prd
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # kubectl + minikube no runner Windows
-      - name: Ensure kubectl (Windows)
+      # ---------- kubectl + minikube ----------
+      - name: Ensure kubectl + minikube
         shell: pwsh
         run: |
           choco install -y kubernetes-cli
-          kubectl version --client
-
-      - name: Ensure Minikube (Windows)
-        shell: pwsh
-        run: |
           choco install -y minikube
           minikube status || minikube start
+          kubectl config use-context minikube
+          kubectl cluster-info
 
-      # Build da imagem local (sem registry remoto)
-      - name: Build local image (Dockerfile.jvm)
-        shell: pwsh
-        working-directory: ${{ env.WORKDIR }}
-        run: |
-          docker build -f src/main/docker/Dockerfile.jvm -t $env:IMAGE_NAME:$env:TAG_DES .
-
-      # Carregar as imagens no Minikube (DES = 'des'; PRD = SHA imutável)
-      - name: Load images into Minikube
+      # ---------- Carregar imagens no Minikube (DES e PRD-SHA) ----------
+      - name: Load images into Minikube (DES + PRD)
         shell: pwsh
         run: |
           # DES
           minikube image load $env:IMAGE_NAME:$env:TAG_DES
-          # PRD
+          # PRD (tag imutável: SHA do commit)
           $TAG_PRD = "${{ github.sha }}"
           docker tag  $env:IMAGE_NAME:$env:TAG_DES $env:IMAGE_NAME:$TAG_PRD
           minikube image load $env:IMAGE_NAME:$TAG_PRD
           echo "TAG_PRD=$TAG_PRD" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      # kubeconfig (se necessário) — pule se seu runner já usa o contexto minikube
-      - name: Use minikube context
-        shell: pwsh
-        run: |
-          kubectl config use-context minikube
-          kubectl cluster-info
-
-      # ----- DES -----
+      # ---------- Deploy DES ----------
       - name: Ensure namespace DES
         shell: pwsh
         run: kubectl get ns $env:NS_DES 2>$null || kubectl create ns $env:NS_DES
@@ -168,12 +132,12 @@ jobs:
           kubectl -n $env:NS_DES set image deployment/$env:DEPLOY_DES $env:CONTAINER=$env:IMAGE_NAME:$env:TAG_DES --record=true
           kubectl -n $env:NS_DES rollout status deployment/$env:DEPLOY_DES --timeout=180s
 
-      # ----- PRD -----
+      # ---------- Deploy PRD ----------
       - name: Ensure namespace PRD
         shell: pwsh
         run: kubectl get ns $env:NS_PRD 2>$null || kubectl create ns $env:NS_PRD
 
-      - name: Apply manifests PRD + set image (commit SHA)
+      - name: Apply manifests PRD + set image (SHA)
         shell: pwsh
         run: |
           kubectl apply -n $env:NS_PRD -f k8s/prd/
