@@ -8,11 +8,12 @@ on:
 
 permissions:
   contents: read
-  security-events: write  # para enviar SARIF ao Code Scanning
+  security-events: write   # necessário para enviar SARIF ao Code Scanning
 
 jobs:
   build:
-    runs-on: self-hosted  # seu runner Windows
+    runs-on: self-hosted   # runner Windows na sua máquina
+
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -24,31 +25,33 @@ jobs:
           java-version: '17'
           cache: maven
 
-      # Build Maven no Windows (usa mvnw.cmd)
+      # ---- Build Maven (Windows) -------------------------------------------
       - name: Build com Maven (sem testes)
         shell: cmd
         run: .\mvnw.cmd -B -DskipTests package
 
-      # Build da imagem Docker (variável via $env:)
+      # ---- Docker build (Windows/cmd) --------------------------------------
       - name: Build da imagem Docker
         shell: cmd
         run: |
           set IMAGE=quarkus-service:${{ github.sha }}
           docker build -f src/main/docker/Dockerfile.jvm -t %IMAGE% .
 
-      # Instalar Trivy (Windows, sem WSL)
+      # ---- Instalar Trivy no Windows (sem WSL) -----------------------------
       - name: Instalar Trivy (Windows)
         shell: powershell
         run: |
           $version = "0.56.2"
-          Invoke-WebRequest -Uri "https://github.com/aquasecurity/trivy/releases/download/v$version/trivy_$version_Windows-64bit.zip" -OutFile "trivy.zip"
+          $url = "https://github.com/aquasecurity/trivy/releases/download/v$version/trivy_$version_Windows-64bit.zip"
+          Write-Host "Baixando Trivy de: $url"
+          Invoke-WebRequest -Uri $url -OutFile "trivy.zip"
           Expand-Archive -Path "trivy.zip" -DestinationPath "$PWD\trivy" -Force
           # adiciona a pasta ao PATH deste job
           "$PWD\trivy" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           trivy -v
 
-      # Trivy Image (gate temporário: CRITICAL)
-      - name: Trivy Image
+           # ---- Trivy (image) - gate temporário: CRITICAL ------------------------
+      - name: "Trivy Image (gate: CRITICAL)"
         shell: cmd
         run: |
           set IMAGE=quarkus-service:${{ github.sha }}
@@ -57,8 +60,8 @@ jobs:
             --exit-code 1 ^
             --format sarif -o trivy-image.sarif %IMAGE%
 
-      # Trivy Filesystem (gate temporário: CRITICAL)
-      - name: Trivy Filesystem
+      # ---- Trivy (filesystem) - gate temporário: CRITICAL -------------------
+      - name: "Trivy Filesystem (gate: CRITICAL)"
         shell: cmd
         run: |
           trivy fs --scanners vuln,secret,config ^
@@ -66,7 +69,8 @@ jobs:
             --exit-code 1 ^
             --format sarif -o trivy-fs.sarif .
 
-      # Upload SARIF (categorias distintas para evitar conflito)
+
+      # ---- Upload SARIF (categorias únicas) --------------------------------
       - name: Upload SARIF (image)
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -79,7 +83,7 @@ jobs:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
 
-      # Guardar relatórios como artifacts
+      # ---- Guardar relatórios como artifacts -------------------------------
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
