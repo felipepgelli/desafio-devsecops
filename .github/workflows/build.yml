@@ -37,20 +37,17 @@ jobs:
           set IMAGE=quarkus-service:${{ github.sha }}
           docker build -f src/main/docker/Dockerfile.jvm -t %IMAGE% .
 
-      # ---- Instalar Trivy no Windows (sem WSL) -----------------------------
-      - name: Instalar Trivy (Windows)
-        shell: powershell
+      # ---- Instalar Trivy no Windows (curl + Expand-Archive) ---------------------
+      - name: "Instalar Trivy (Windows)"
+        shell: cmd
         run: |
-          $version = "0.56.2"
-          $url = "https://github.com/aquasecurity/trivy/releases/download/v$version/trivy_$version_Windows-64bit.zip"
-          Write-Host "Baixando Trivy de: $url"
-          Invoke-WebRequest -Uri $url -OutFile "trivy.zip"
-          Expand-Archive -Path "trivy.zip" -DestinationPath "$PWD\trivy" -Force
-          # adiciona a pasta ao PATH deste job
-          "$PWD\trivy" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          set TRIVY_VERSION=0.56.2
+          curl -L -o trivy.zip https://github.com/aquasecurity/trivy/releases/download/v%TRIVY_VERSION%/trivy_%TRIVY_VERSION%_Windows-64bit.zip
+          powershell -Command "Expand-Archive -Path trivy.zip -DestinationPath trivy -Force"
+          echo %CD%\trivy>> %GITHUB_PATH%
           trivy -v
 
-           # ---- Trivy (image) - gate temporário: CRITICAL ------------------------
+     # ---- Trivy (image) - gate temporário: CRITICAL ------------------------
       - name: "Trivy Image (gate: CRITICAL)"
         shell: cmd
         run: |
@@ -60,7 +57,7 @@ jobs:
             --exit-code 1 ^
             --format sarif -o trivy-image.sarif %IMAGE%
 
-      # ---- Trivy (filesystem) - gate temporário: CRITICAL -------------------
+# ---- Trivy (filesystem) - gate temporário: CRITICAL -------------------
       - name: "Trivy Filesystem (gate: CRITICAL)"
         shell: cmd
         run: |
@@ -68,6 +65,7 @@ jobs:
             --severity CRITICAL ^
             --exit-code 1 ^
             --format sarif -o trivy-fs.sarif .
+
 
 
       # ---- Upload SARIF (categorias únicas) --------------------------------
