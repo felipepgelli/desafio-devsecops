@@ -9,6 +9,9 @@ jobs:
   ci:
     name: CI + Security + Deploy (Minikube DES/PRD)
     runs-on: [self-hosted, Windows, X64]
+    defaults:
+      run:
+        shell: cmd
 
     env:
       MODULE_DIR: app\quarkus-quickstarts\getting-started
@@ -29,12 +32,12 @@ jobs:
       # BUILD + TEST + COVERAGE
       # =========================
       - name: Build & Test (gera cobertura JaCoCo)
-        shell: pwsh
+        shell: cmd
         working-directory: ${{ env.MODULE_DIR }}
         run: .\mvnw.cmd -B clean verify -D"quarkus.package.jar.type=fast-jar"
 
       - name: SonarQube (com cobertura)
-        shell: pwsh
+        shell: cmd
         working-directory: ${{ env.MODULE_DIR }}
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
