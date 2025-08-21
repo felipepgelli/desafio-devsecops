@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+  security-events: write   # necessário para enviar SARIF
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,6 +23,54 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: maven
 
-      - name: Build com Maven
-        run: mvn -B package --file pom.xml
+      - name: Build com Maven (sem testes)
+        run: ./mvnw -B -DskipTests package
+
+      # --- NOVO: build da imagem Docker ---
+      - name: Build da imagem Docker
+        run: |
+          IMAGE=quarkus-service:${{ github.sha }}
+          docker build -f src/main/docker/Dockerfile.jvm -t $IMAGE .
+
+      # --- NOVO: instalar Trivy ---
+      - name: Instalar Trivy
+        uses: aquasecurity/setup-trivy@v0.2.2
+
+      # --- NOVO: Trivy Image (falha se HIGH/CRITICAL) ---
+      - name: Trivy Image
+        run: |
+          IMAGE=quarkus-service:${{ github.sha }}
+          trivy image --scanners vuln,secret,config \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --format sarif -o trivy-image.sarif $IMAGE
+
+      # --- NOVO: Trivy Filesystem (falha se HIGH/CRITICAL) ---
+      - name: Trivy Filesystem
+        run: |
+          trivy fs --scanners vuln,secret,config \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --format sarif -o trivy-fs.sarif .
+
+      # --- NOVO: publicar relatórios no Code Scanning ---
+      - name: Upload SARIF (image)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image.sarif
+
+      - name: Upload SARIF (fs)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+
+      # --- NOVO: guardar artefatos ---
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: |
+            trivy-image.sarif
+            trivy-fs.sarif
