@@ -26,12 +26,12 @@ jobs:
 
       # Build Maven no Windows (usa mvnw.cmd)
       - name: Build com Maven (sem testes)
-        shell: pwsh
+        shell: cmd
         run: .\mvnw.cmd -B -DskipTests package
 
       # Build da imagem Docker (variável via $env:)
       - name: Build da imagem Docker
-        shell: pwsh
+        shell: cmd
         run: |
           $env:IMAGE = "quarkus-service:${{ github.sha }}"
           docker build -f src/main/docker/Dockerfile.jvm -t $env:IMAGE .
@@ -41,21 +41,21 @@ jobs:
 
       # Trivy Image (gate temporário: CRITICAL)
       - name: Trivy Image
-        shell: pwsh
+        shell: cmd
         run: |
           $env:IMAGE = "quarkus-service:${{ github.sha }}"
-          trivy image --scanners vuln,secret,config `
-            --severity CRITICAL `
-            --exit-code 1 `
+          trivy image --scanners vuln,secret,config ^
+            --severity CRITICAL ^
+            --exit-code 1 ^
             --format sarif -o trivy-image.sarif $env:IMAGE
 
       # Trivy Filesystem (gate temporário: CRITICAL)
       - name: Trivy Filesystem
-        shell: pwsh
+        shell: cmd
         run: |
-          trivy fs --scanners vuln,secret,config `
-            --severity CRITICAL `
-            --exit-code 1 `
+          trivy fs --scanners vuln,secret,config ^
+            --severity CRITICAL ^
+            --exit-code 1 ^
             --format sarif -o trivy-fs.sarif .
 
       # Upload SARIF (categorias distintas para evitar conflito)
