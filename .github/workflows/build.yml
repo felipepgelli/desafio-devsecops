@@ -33,8 +33,8 @@ jobs:
       - name: Build da imagem Docker
         shell: cmd
         run: |
-          $env:IMAGE = "quarkus-service:${{ github.sha }}"
-          docker build -f src/main/docker/Dockerfile.jvm -t $env:IMAGE .
+          set IMAGE=quarkus-service:${{ github.sha }}
+          docker build -f src/main/docker/Dockerfile.jvm -t %IMAGE% .
 
       - name: Instalar Trivy
         uses: aquasecurity/setup-trivy@v0.2.2
@@ -43,11 +43,11 @@ jobs:
       - name: Trivy Image
         shell: cmd
         run: |
-          $env:IMAGE = "quarkus-service:${{ github.sha }}"
+          set IMAGE=quarkus-service:${{ github.sha }}
           trivy image --scanners vuln,secret,config ^
             --severity CRITICAL ^
             --exit-code 1 ^
-            --format sarif -o trivy-image.sarif $env:IMAGE
+            --format sarif -o trivy-image.sarif %IMAGE%
 
       # Trivy Filesystem (gate temporário: CRITICAL)
       - name: Trivy Filesystem
