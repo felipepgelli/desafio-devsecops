@@ -1,0 +1,16 @@
+﻿# k8s/des/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: getting-started
+  namespace: des
+  labels:
+    app: getting-started
+spec:
+  type: ClusterIP
+  selector:
+    app: getting-started
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
