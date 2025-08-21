@@ -1,0 +1,88 @@
+
+Report Summary
+
+┌─────────────────────────────────────────┬────────────┬─────────────────┬─────────┬───────────────────┐
+│                 Target                  │    Type    │ Vulnerabilities │ Secrets │ Misconfigurations │
+├─────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ pom.xml                                 │    pom     │        1        │    -    │         -         │
+├─────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ src/main/docker/Dockerfile.jvm          │ dockerfile │        -        │    -    │         1         │
+├─────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ src/main/docker/Dockerfile.legacy-jar   │ dockerfile │        -        │    -    │         1         │
+├─────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ src/main/docker/Dockerfile.native       │ dockerfile │        -        │    -    │         1         │
+├─────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ src/main/docker/Dockerfile.native-micro │ dockerfile │        -        │    -    │         1         │
+└─────────────────────────────────────────┴────────────┴─────────────────┴─────────┴───────────────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
+
+pom.xml (pom)
+=============
+Total: 1 (UNKNOWN: 0, LOW: 0, MEDIUM: 0, HIGH: 1, CRITICAL: 0)
+
+┌────────────────────────────┬────────────────┬──────────┬────────┬───────────────────┬────────────────────────────┬──────────────────────────────────────────────────────────┐
+│          Library           │ Vulnerability  │ Severity │ Status │ Installed Version │       Fixed Version        │                          Title                           │
+├────────────────────────────┼────────────────┼──────────┼────────┼───────────────────┼────────────────────────────┼──────────────────────────────────────────────────────────┤
+│ io.netty:netty-codec-http2 │ CVE-2025-55163 │ HIGH     │ fixed  │ 4.1.121.Final     │ 4.2.4.Final, 4.1.124.Final │ netty: netty-codec-http2: Netty MadeYouReset HTTP/2 DDoS │
+│                            │                │          │        │                   │                            │ Vulnerability                                            │
+│                            │                │          │        │                   │                            │ https://avd.aquasec.com/nvd/cve-2025-55163               │
+└────────────────────────────┴────────────────┴──────────┴────────┴───────────────────┴────────────────────────────┴──────────────────────────────────────────────────────────┘
+
+src/main/docker/Dockerfile.jvm (dockerfile)
+===========================================
+Tests: 27 (SUCCESSES: 26, FAILURES: 1)
+Failures: 1 (UNKNOWN: 0, LOW: 1, MEDIUM: 0, HIGH: 0, CRITICAL: 0)
+
+AVD-DS-0026 (LOW): Add HEALTHCHECK instruction in your Dockerfile
+════════════════════════════════════════
+You should add HEALTHCHECK instruction in your docker container images to perform the health check on running containers.
+
+See https://avd.aquasec.com/misconfig/ds026
+────────────────────────────────────────
+
+
+
+src/main/docker/Dockerfile.legacy-jar (dockerfile)
+==================================================
+Tests: 27 (SUCCESSES: 26, FAILURES: 1)
+Failures: 1 (UNKNOWN: 0, LOW: 1, MEDIUM: 0, HIGH: 0, CRITICAL: 0)
+
+AVD-DS-0026 (LOW): Add HEALTHCHECK instruction in your Dockerfile
+════════════════════════════════════════
+You should add HEALTHCHECK instruction in your docker container images to perform the health check on running containers.
+
+See https://avd.aquasec.com/misconfig/ds026
+────────────────────────────────────────
+
+
+
+src/main/docker/Dockerfile.native (dockerfile)
+==============================================
+Tests: 27 (SUCCESSES: 26, FAILURES: 1)
+Failures: 1 (UNKNOWN: 0, LOW: 1, MEDIUM: 0, HIGH: 0, CRITICAL: 0)
+
+AVD-DS-0026 (LOW): Add HEALTHCHECK instruction in your Dockerfile
+════════════════════════════════════════
+You should add HEALTHCHECK instruction in your docker container images to perform the health check on running containers.
+
+See https://avd.aquasec.com/misconfig/ds026
+────────────────────────────────────────
+
+
+
+src/main/docker/Dockerfile.native-micro (dockerfile)
+====================================================
+Tests: 27 (SUCCESSES: 26, FAILURES: 1)
+Failures: 1 (UNKNOWN: 0, LOW: 1, MEDIUM: 0, HIGH: 0, CRITICAL: 0)
+
+AVD-DS-0026 (LOW): Add HEALTHCHECK instruction in your Dockerfile
+════════════════════════════════════════
+You should add HEALTHCHECK instruction in your docker container images to perform the health check on running containers.
+
+See https://avd.aquasec.com/misconfig/ds026
+────────────────────────────────────────
+
+
