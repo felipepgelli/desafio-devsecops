@@ -28,11 +28,13 @@ jobs:
       # ---- Build Maven (Windows) -------------------------------------------
       - name: Build com Maven (sem testes)
         shell: cmd
+        working-directory: app/quarkus-quickstarts/getting-started
         run: .\mvnw.cmd -B -DskipTests package
 
        # ---- SonarQube (Maven) -----------------------------------------------------
       - name: "SonarQube: análise com Maven"
         shell: cmd
+        working-directory: app/quarkus-quickstarts/getting-started
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
@@ -48,6 +50,7 @@ jobs:
       # ---- Docker build (Windows/cmd) --------------------------------------
       - name: Build da imagem Docker
         shell: cmd
+        working-directory: app/quarkus-quickstarts/getting-started
         run: |
           set IMAGE=quarkus-service:${{ github.sha }}
           docker build -f src/main/docker/Dockerfile.jvm -t %IMAGE% .
@@ -66,7 +69,7 @@ jobs:
       - name: "Trivy Image (gate: CRITICAL)"
         shell: cmd
         run: |
-          set IMAGE=quarkus-service:${{ github.sha }}
+          set IMAGE=getting-started:${{ github.sha }}
           trivy image --scanners vuln,secret,config ^
             --severity CRITICAL ^
             --exit-code 1 ^
@@ -75,6 +78,7 @@ jobs:
 # ---- Trivy (filesystem) - gate temporário: CRITICAL -------------------
       - name: "Trivy Filesystem (gate: CRITICAL)"
         shell: cmd
+        working-directory: app/quarkus-quickstarts/getting-started
         run: |
           trivy fs --scanners vuln,secret,config ^
             --severity CRITICAL ^
