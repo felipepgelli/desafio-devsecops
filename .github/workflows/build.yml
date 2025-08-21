@@ -1,61 +1,64 @@
-name: Build Quarkus
+name: Build Quarkus (Self-Hosted)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
 
 permissions:
   contents: read
-  security-events: write   # necessário para enviar SARIF
+  security-events: write  # para enviar SARIF ao Code Scanning
 
 jobs:
   build:
-    runs-on: self-hosted
-
+    runs-on: self-hosted  # seu runner Windows
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
 
-      - name: Configurar JDK 17
+      - name: Configurar JDK 17 (Temurin)
         uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
           cache: maven
 
+      # Build Maven no Windows (usa mvnw.cmd)
       - name: Build com Maven (sem testes)
-        run: ./mvnw -B -DskipTests package
+        shell: pwsh
+        run: .\mvnw.cmd -B -DskipTests package
 
-      # --- NOVO: build da imagem Docker ---
+      # Build da imagem Docker (variável via $env:)
       - name: Build da imagem Docker
+        shell: pwsh
         run: |
-          IMAGE=quarkus-service:${{ github.sha }}
-          docker build -f src/main/docker/Dockerfile.jvm -t $IMAGE .
+          $env:IMAGE = "quarkus-service:${{ github.sha }}"
+          docker build -f src/main/docker/Dockerfile.jvm -t $env:IMAGE .
 
-      # --- NOVO: instalar Trivy ---
       - name: Instalar Trivy
         uses: aquasecurity/setup-trivy@v0.2.2
 
-      # --- NOVO: Trivy Image (falha se HIGH/CRITICAL) ---
+      # Trivy Image (gate temporário: CRITICAL)
       - name: Trivy Image
+        shell: pwsh
         run: |
-          IMAGE=quarkus-service:${{ github.sha }}
-          trivy image --scanners vuln,secret,config \
-            --severity CRITICAL \
-            --exit-code 1 \
-            --format sarif -o trivy-image.sarif $IMAGE
+          $env:IMAGE = "quarkus-service:${{ github.sha }}"
+          trivy image --scanners vuln,secret,config `
+            --severity CRITICAL `
+            --exit-code 1 `
+            --format sarif -o trivy-image.sarif $env:IMAGE
 
-      # --- NOVO: Trivy Filesystem (falha se HIGH/CRITICAL) ---
+      # Trivy Filesystem (gate temporário: CRITICAL)
       - name: Trivy Filesystem
+        shell: pwsh
         run: |
-          trivy fs --scanners vuln,secret,config \
-            --severity CRITICAL \
-            --exit-code 1 \
+          trivy fs --scanners vuln,secret,config `
+            --severity CRITICAL `
+            --exit-code 1 `
             --format sarif -o trivy-fs.sarif .
 
-      # --- NOVO: publicar relatórios no Code Scanning ---
+      # Upload SARIF (categorias distintas para evitar conflito)
       - name: Upload SARIF (image)
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -68,7 +71,7 @@ jobs:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
 
-      # --- NOVO: guardar artefatos ---
+      # Guardar relatórios como artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
