@@ -36,8 +36,16 @@ jobs:
           set IMAGE=quarkus-service:${{ github.sha }}
           docker build -f src/main/docker/Dockerfile.jvm -t %IMAGE% .
 
-      - name: Instalar Trivy
-        uses: aquasecurity/setup-trivy@v0.2.2
+      # Instalar Trivy (Windows, sem WSL)
+      - name: Instalar Trivy (Windows)
+        shell: powershell
+        run: |
+          $version = "0.56.2"
+          Invoke-WebRequest -Uri "https://github.com/aquasecurity/trivy/releases/download/v$version/trivy_$version_Windows-64bit.zip" -OutFile "trivy.zip"
+          Expand-Archive -Path "trivy.zip" -DestinationPath "$PWD\trivy" -Force
+          # adiciona a pasta ao PATH deste job
+          "$PWD\trivy" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          trivy -v
 
       # Trivy Image (gate temporário: CRITICAL)
       - name: Trivy Image
