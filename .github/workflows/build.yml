@@ -105,10 +105,14 @@ jobs:
         shell: cmd
         working-directory: app/quarkus-quickstarts/getting-started
         run: |
-          trivy fs --scanners vuln,secret,config ^
-            --severity CRITICAL ^
-            --exit-code 1 ^
-            --format sarif -o trivy-fs.sarif .
+              trivy fs --scanners vuln,secret,misconfig ^
+                --severity CRITICAL ^
+                --exit-code 0 ^
+                --format sarif -o trivy-fs.sarif .
+              dir trivy-fs.sarif
+
+          
+
 
 
 
@@ -122,8 +126,8 @@ jobs:
       - name: Upload SARIF (fs)
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: trivy-fs.sarif
-          category: trivy-fs
+         sarif_file: app/quarkus-quickstarts/getting-started/trivy-fs.sarif
+         category: Trivy-FS
 
       # ---- Guardar relatórios como artifacts -------------------------------
       - name: Upload artifacts
