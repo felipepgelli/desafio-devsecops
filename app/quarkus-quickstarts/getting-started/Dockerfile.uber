@@ -1,0 +1,7 @@
+﻿FROM eclipse-temurin:17-jre
+WORKDIR /deployments
+# copia o JAR "runner" gerado pelo Quarkus (uber-jar)
+COPY target/*-runner.jar ./runner.jar
+ENV QUARKUS_HTTP_HOST=0.0.0.0
+EXPOSE 8080
+ENTRYPOINT ["java","-jar","./runner.jar"]
