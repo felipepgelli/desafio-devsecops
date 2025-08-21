@@ -25,11 +25,11 @@ jobs:
           java-version: '17'
           cache: maven
 
-      # ---- Build Maven (Windows) -------------------------------------------
+        # --- Build do módulo getting-started (gera fast-jar) ---
       - name: Build com Maven (sem testes)
         shell: cmd
         working-directory: app/quarkus-quickstarts/getting-started
-        run: .\mvnw.cmd -B -DskipTests package
+        run: .\mvnw.cmd -B -DskipTests -D"quarkus.package.type=fast-jar" clean package
 
        # ---- SonarQube (Maven) -----------------------------------------------------
       - name: "SonarQube: análise com Maven"
@@ -46,15 +46,39 @@ jobs:
           -Dsonar.qualitygate.wait=false
           -Dsonar.projectKey=quarkus-service
 
-          
-      # ---- Docker build (Windows/cmd) --------------------------------------
-      - name: Build da imagem Docker
+          - name: Debug target
+            shell: cmd
+            working-directory: app/quarkus-quickstarts/getting-started
+            run: dir target\quarkus-app
+        # --- Docker Build (Temurin 17) ---
+      - name: Build da imagem Docker (Temurin 17)
         shell: cmd
         working-directory: app/quarkus-quickstarts/getting-started
         run: |
-          set IMAGE=quarkus-service:${{ github.sha }}
-          docker build -f src/main/docker/Dockerfile.jvm -t %IMAGE% .
+          set IMAGE=getting-started:${{ github.sha }}
+          docker build --no-cache -f src/main/docker/Dockerfile.jvm -t %IMAGE% .
 
+      # Debug: garantir que a imagem existe localmente
+      - name: Verificar imagem local
+        shell: cmd
+        run: |
+          set IMAGE=getting-started:${{ github.sha }}
+          echo Verificando %%IMAGE%%
+          docker images
+          docker image inspect %IMAGE% >nul 2>&1 || (echo ERRO: imagem %IMAGE% nao encontrada & exit /b 1)
+
+      # Exportar a imagem para tar (robusto para o Trivy)
+      - name: Exportar imagem para tar
+        shell: cmd
+        run: |
+          set IMAGE=getting-started:${{ github.sha }}
+          docker save %IMAGE% -o image.tar
+          dir image.tar
+
+
+
+
+        
       # ---- Instalar Trivy no Windows (curl + Expand-Archive) ---------------------
       - name: "Instalar Trivy (Windows)"
         shell: cmd
@@ -65,15 +89,16 @@ jobs:
           echo %CD%\trivy>> %GITHUB_PATH%
           trivy -v
 
-     # ---- Trivy (image) - gate temporário: CRITICAL ------------------------
+         # --- Trivy Image (usar a mesma tag) ---
       - name: "Trivy Image (gate: CRITICAL)"
         shell: cmd
         run: |
-          set IMAGE=getting-started:${{ github.sha }}
-          trivy image --scanners vuln,secret,config ^
-            --severity CRITICAL ^
-            --exit-code 1 ^
-            --format sarif -o trivy-image.sarif %IMAGE%
+              trivy image --scanners vuln,secret,misconfig ^
+                --severity CRITICAL ^
+                --exit-code 1 ^
+                --format sarif -o trivy-image.sarif ^
+                --input image.tar
+
 
 # ---- Trivy (filesystem) - gate temporário: CRITICAL -------------------
       - name: "Trivy Filesystem (gate: CRITICAL)"
