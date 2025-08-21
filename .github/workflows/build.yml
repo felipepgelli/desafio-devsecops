@@ -54,7 +54,7 @@ jobs:
       # DOCKER IMAGE (TEMURIN)
       # =========================
       - name: Docker build (Temurin 17)
-        shell: pwsh
+        shell: cmd
         working-directory: ${{ env.MODULE_DIR }}
         run: docker build -f src\main\docker\Dockerfile.jvm -t ${{ env.IMAGE_TAG }} .
 
@@ -62,7 +62,7 @@ jobs:
       # TRIVY SCANS (IMAGE + FS)
       # =========================
       - name: Trivy image → SARIF + TXT
-        shell: pwsh
+        shell: cmd
         continue-on-error: true  # não falhar o job por vulnerabilidades encontradas
         run: |
           trivy image --scanners vuln,misconfig,secret --format sarif -o trivy-image.sarif $env:IMAGE_TAG
@@ -76,7 +76,7 @@ jobs:
           category: trivy-image
 
       - name: Trivy filesystem → SARIF + TXT
-        shell: pwsh
+        shell: cmd
         working-directory: ${{ env.MODULE_DIR }}
         continue-on-error: true
         run: |
@@ -94,7 +94,7 @@ jobs:
 
       - name: Commit evidências Trivy (TXT)
         if: always()
-        shell: pwsh
+        shell: cmd
         run: |
           git config user.email "ci@local"
           git config user.name "ci-bot"
@@ -105,7 +105,7 @@ jobs:
       # SELEÇÃO DE AMBIENTE (DES/PRD)
       # =========================
       - name: Definir namespace e pasta K8s por branch
-        shell: pwsh
+        shell: cmd
         run: |
           if ("${{ github.ref }}" -eq "refs/heads/main") {
             echo "TARGET_NS=prd" >> $env:GITHUB_ENV
@@ -121,27 +121,27 @@ jobs:
       # DEPLOY (MINIKUBE - DES/PRD)
       # =========================
       - name: Kubectl context
-        shell: pwsh
+        shell: cmd
         run: |
           kubectl config use-context minikube
           kubectl cluster-info
 
       - name: Garantir namespace
-        shell: pwsh
+        shell: cmd
         run: kubectl create namespace $env:TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Carregar imagem local no Minikube
-        shell: pwsh
+        shell: cmd
         run: minikube image load $env:IMAGE_TAG
 
       - name: Aplicar manifests (por branch)
-        shell: pwsh
+        shell: cmd
         run: kubectl apply -n $env:TARGET_NS -f $env:K8S_DIR
 
       - name: Validar rollout
-        shell: pwsh
+        shell: cmd
         run: kubectl rollout status -n $env:TARGET_NS deploy/getting-started --timeout=120s
 
       - name: Mostrar objetos (evidência)
-        shell: pwsh
+        shell: cmd
         run: kubectl get deploy,po,svc -n $env:TARGET_NS -l app=getting-started -o wide
