@@ -1,0 +1,62 @@
+name: CI - Build, Test, JaCoCo e Sonar
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  build_test_sonar:
+    runs-on: ubuntu-latest
+    env:
+      WORKDIR: quarkus-service/app/quarkus-quickstarts/getting-started
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            m2-${{ runner.os }}-
+
+      - name: Build + Test + JaCoCo
+        working-directory: ${{ env.WORKDIR }}
+        run: ./mvnw -B clean verify
+
+      - name: Upload JaCoCo Report (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: ${{ env.WORKDIR }}/target/site/jacoco/
+
+      - name: Sanity check secrets
+        env:
+                SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+                SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+                if [ -z "$SONAR_HOST_URL" ] || [ -z "$SONAR_TOKEN" ]; then
+                echo "❌ SONAR_HOST_URL ou SONAR_TOKEN não configurados."
+                exit 1
+                else
+                echo "✅ Secrets presentes (valores mascarados nos logs)."
+                fi
+
+      - name: SonarQube Analyze
+        working-directory: ${{ env.WORKDIR }}
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          ./mvnw -B sonar:sonar \
+            -Dsonar.host.url=$SONAR_HOST_URL \
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.projectKey=quarkus-quickstarts-getting-started
