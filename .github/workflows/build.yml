@@ -126,20 +126,24 @@ jobs:
 
       - name: Garantir namespace
         shell: cmd
-        run: kubectl create namespace $env:TARGET_NS --dry-run=client -o yaml | kubectl apply -f -
+        run: rem garante que estamos no contexto do minikube
+          kubectl config use-context minikube
+
+          rem se o namespace não existir, cria; se existir, segue
+          kubectl get ns %NS% >nul 2>&1 || kubectl create namespace %NS%
 
       - name: Carregar imagem local no Minikube
         shell: cmd
-        run: minikube image load $env:IMAGE_TAG
+        run: minikube image load %IMAGE_TAG%
 
       - name: Aplicar manifests (por branch)
         shell: cmd
-        run: kubectl apply -n $env:TARGET_NS -f $env:K8S_DIR
+        run: kubectl apply -n %NS% -f %K8S_DIR%
 
       - name: Validar rollout
         shell: cmd
-        run: kubectl rollout status -n $env:TARGET_NS deploy/getting-started --timeout=120s
+        run: kubectl rollout status -n %NS% deploy/getting-started --timeout=120s
 
       - name: Mostrar objetos (evidência)
         shell: cmd
-        run: kubectl get deploy,po,svc -n $env:TARGET_NS -l app=getting-started -o wide
+        run: kubectl get deploy,po,svc -n %NS% -l app=getting-started -o wide
