@@ -65,9 +65,9 @@ jobs:
         shell: cmd
         continue-on-error: true  # não falhar o job por vulnerabilidades encontradas
         run: |
-          trivy image --scanners vuln,misconfig,secret --format sarif -o trivy-image.sarif $env:IMAGE_TAG
-          if (!(Test-Path docs\scans)) { New-Item -ItemType Directory -Path docs\scans | Out-Null }
-          trivy image --scanners vuln,misconfig,secret --severity CRITICAL $env:IMAGE_TAG > docs\scans\trivy-image-${{ env.IMAGE_TAG }}.txt
+           mkdir docs\scans 2>nul
+            trivy image --scanners vuln,misconfig,secret --format sarif -o trivy-image.sarif %IMAGE_TAG%
+            trivy image --scanners vuln,misconfig,secret --severity CRITICAL %IMAGE_TAG% > docs\scans\trivy-image.txt
 
       - name: Upload SARIF (Trivy Image)
         uses: github/codeql-action/upload-sarif@v3
@@ -81,10 +81,7 @@ jobs:
         continue-on-error: true
         run: |
           trivy fs --scanners vuln,misconfig,secret --format sarif -o trivy-fs.sarif .
-          Copy-Item trivy-fs.sarif ..\..\..\trivy-fs.sarif
-          cd ..\..\..
-          if (!(Test-Path docs\scans)) { New-Item -ItemType Directory -Path docs\scans | Out-Null }
-          trivy fs --scanners vuln,misconfig,secret --severity CRITICAL $env:MODULE_DIR > docs\scans\trivy-fs-getting-started.txt
+          trivy fs --scanners vuln,misconfig,secret --severity CRITICAL . > docs\scans\trivy-fs.txt
 
       - name: Upload SARIF (Trivy FS)
         uses: github/codeql-action/upload-sarif@v3
