@@ -95,16 +95,25 @@ jobs:
       # =========================
       - name: Definir namespace e pasta K8s por branch
         shell: cmd
+        env:
+          BRANCH: ${{ github.ref_name }}   # nome da branch (ex.: main)
         run: |
-          if ("${{ github.ref }}" -eq "refs/heads/main") {
-            echo "TARGET_NS=prd" >> $env:GITHUB_ENV
-            echo "K8S_DIR=k8s\prd" >> $env:GITHUB_ENV
-          } else {
-            echo "TARGET_NS=des" >> $env:GITHUB_ENV
-            echo "K8S_DIR=k8s\des" >> $env:GITHUB_ENV
-          }
-          Write-Host "Target NS: $env:TARGET_NS"
-          Write-Host "K8s Dir:  $env:K8S_DIR"
+          @echo off
+          rem Escolhe ns e pasta k8s conforme a branch
+          if /I "%BRANCH%"=="main" (
+            set "NS=prd"
+            set "K8S_DIR=k8s\prd"
+          ) else (
+            set "NS=des"
+            set "K8S_DIR=k8s\des"
+          )
+
+            rem Exporta para os próximos steps
+            echo NS=%NS%>> "%GITHUB_ENV%"
+            echo K8S_DIR=%K8S_DIR%>> "%GITHUB_ENV%"
+
+            echo Selecionado NS=%NS%  K8S_DIR=%K8S_DIR%
+
 
       # =========================
       # DEPLOY (MINIKUBE - DES/PRD)
