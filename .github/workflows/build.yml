@@ -73,9 +73,9 @@ jobs:
 
       - name: Trivy filesystem → SARIF + TXT
         shell: cmd
-        working-directory: ${{ env.MODULE_DIR }}
         continue-on-error: true
         run: |
+         mkdir docs\scans 2>nul
           trivy fs --scanners vuln,misconfig,secret --format sarif -o trivy-fs.sarif .
           trivy fs --scanners vuln,misconfig,secret --severity CRITICAL . > docs\scans\trivy-fs.txt
 
