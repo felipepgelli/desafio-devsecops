@@ -2,7 +2,6 @@
 kind: Deployment
 metadata:
   name: getting-started
-  namespace: prd
   labels:
     app: getting-started
 spec:
@@ -16,21 +15,9 @@ spec:
         app: getting-started
     spec:
       containers:
-        - name: app
-                    image: getting-started:temurin
-          imagePullPolicy: IfNotPresent
+        - name: getting-started
+          image: getting-started:temurin   # tag que você já construiu e carregou no Minikube
+          imagePullPolicy: Never           # importante para usar a imagem local do Minikube
           ports:
             - containerPort: 8080
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: getting-started
-  namespace: prd
-spec:
-  selector:
-    app: getting-started
-  ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
+
