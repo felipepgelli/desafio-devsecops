@@ -69,11 +69,7 @@ jobs:
             trivy image --scanners vuln,misconfig,secret --format sarif -o trivy-image.sarif %IMAGE_TAG%
             trivy image --scanners vuln,misconfig,secret --severity CRITICAL %IMAGE_TAG% > docs\scans\trivy-image.txt
 
-      - name: Upload SARIF (Trivy Image)
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-image.sarif
-          category: trivy-image
+    
 
       - name: Trivy filesystem → SARIF + TXT
         shell: cmd
@@ -83,11 +79,7 @@ jobs:
           trivy fs --scanners vuln,misconfig,secret --format sarif -o trivy-fs.sarif .
           trivy fs --scanners vuln,misconfig,secret --severity CRITICAL . > docs\scans\trivy-fs.txt
 
-      - name: Upload SARIF (Trivy FS)
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-fs.sarif
-          category: trivy-fs
+      
 
       - name: Commit evidências Trivy (TXT)
         if: always()
